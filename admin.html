@@ -23,13 +23,11 @@
     <p>Gerencie o cardápio e acompanhe os pedidos em tempo real</p>
   </header>
 
-  <!-- 1. Pedidos em Tempo Real -->
   <div class="box">
     <h2>🔔 Pedidos na Fila (Ao Vivo)</h2>
     <div id="listaPedidos">Carregando pedidos...</div>
   </div>
 
-  <!-- 2. Adicionar Pratos -->
   <div class="box">
     <h2>➕ Adicionar Item ao Cardápio</h2>
     <input type="text" id="nome" placeholder="Nome do prato (ex: Frango com Quiabo)">
@@ -38,7 +36,6 @@
     <button onclick="adicionarPrato()">Salvar no Cardápio</button>
   </div>
 
-  <!-- 3. Cardápio Atual -->
   <div class="box">
     <h2>📋 Cardápio Ativo no Site</h2>
     <div id="listaCardapio">Carregando cardápio...</div>
@@ -71,7 +68,6 @@
 
     async function carregarDados() {
       try {
-        // Cardápio
         const resMenu = await fetch(`${FIREBASE_URL}cardapio.json`);
         const dataMenu = await resMenu.json();
         const divMenu = document.getElementById('listaCardapio');
@@ -93,7 +89,6 @@
           divMenu.innerHTML = '<p>Nenhum prato cadastrado ainda.</p>';
         }
 
-        // Pedidos
         const resPed = await fetch(`${FIREBASE_URL}pedidos.json`);
         const dataPed = await resPed.json();
         const divPed = document.getElementById('listaPedidos');
@@ -116,7 +111,7 @@
           divPed.innerHTML = '<p>Nenhum pedido pendente no momento.</p>';
         }
       } catch (e) {
-        console.error("Aguardando ativação do banco no Firebase...", e);
+        console.error("Erro ao carregar dados:", e);
       }
     }
 
