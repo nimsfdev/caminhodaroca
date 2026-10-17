@@ -5,12 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Painel Admin - Restaurante Caminho da Roça</title>
   <style>
-    body { font-family: system-ui, sans-serif; background: #f1f5f9; padding: 20px; max-width: 900px; margin: auto; color: #333; }
-    header { background: #2b4c3f; color: white; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f1f5f9; padding: 20px; max-width: 900px; margin: auto; color: #333; }
+    header { background: #2b4c3f; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: center; }
+    header h1 { margin: 0 0 6px 0; font-size: 1.6rem; }
     .box { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.06); }
-    input, button { padding: 12px; margin: 6px 0; width: 100%; box-sizing: border-box; border-radius: 6px; border: 1px solid #ccc; font-size: 1rem; }
+    input, button { padding: 12px; margin: 6px 0; width: 100%; border-radius: 6px; border: 1px solid #ccc; font-size: 1rem; }
     button { background: #2b4c3f; color: white; font-weight: bold; border: none; cursor: pointer; }
     button:hover { opacity: 0.9; }
+    .variacoes-box { background: #f8fafc; border: 1px dashed #cbd5e1; padding: 12px; border-radius: 6px; margin: 8px 0; }
     .btn-del { background: #e63946; width: auto; padding: 8px 14px; font-size: 0.9rem; }
     .item-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding: 12px 0; }
     .pedido-card { display: flex; justify-content: space-between; align-items: center; background: #fff8e6; padding: 15px; border-left: 5px solid #ffb703; margin-bottom: 10px; border-radius: 6px; }
@@ -20,44 +23,66 @@
 
   <header>
     <h1>🍲 Restaurante Caminho da Roça - Painel</h1>
-    <p>Gerencie o cardápio e acompanhe os pedidos em tempo real</p>
+    <p>Registo de pratos com tamanhos e receção de pedidos</p>
   </header>
 
   <div class="box">
     <h2>🔔 Pedidos na Fila (Ao Vivo)</h2>
-    <div id="listaPedidos">Carregando pedidos...</div>
+    <div id="listaPedidos">A carregar pedidos...</div>
   </div>
 
   <div class="box">
     <h2>➕ Adicionar Item ao Cardápio</h2>
     <input type="text" id="nome" placeholder="Nome do prato (ex: Frango com Quiabo)">
-    <input type="text" id="desc" placeholder="Descrição (ex: Acompanha arroz, angu e feijão tropeiro)">
-    <input type="number" id="preco" step="0.01" placeholder="Preço (ex: 35.00)">
+    <input type="text" id="desc" placeholder="Descrição (ex: Acompanha arroz, feijão e couve)">
+    <input type="url" id="imagem" placeholder="Link da foto (ex: https://i.imgur.com/... ou vazio)">
+    
+    <div class="variacoes-box">
+      <strong>Tamanhos e Preços (Preencha os que existirem):</strong>
+      <input type="number" step="0.01" id="precoP" placeholder="Preço Pequeno / Individual (R$)">
+      <input type="number" step="0.01" id="precoM" placeholder="Preço Médio (R$)">
+      <input type="number" step="0.01" id="precoG" placeholder="Preço Grande / Família (R$)">
+    </div>
+
     <button onclick="adicionarPrato()">Salvar no Cardápio</button>
   </div>
 
   <div class="box">
     <h2>📋 Cardápio Ativo no Site</h2>
-    <div id="listaCardapio">Carregando cardápio...</div>
+    <div id="listaCardapio">A carregar cardápio...</div>
   </div>
 
   <script>
     const FIREBASE_URL = "https://restaurante-caminho-da-roca-default-rtdb.firebaseio.com/";
 
     async function adicionarPrato() {
-      const nome = document.getElementById('nome').value;
-      const desc = document.getElementById('desc').value;
-      const preco = parseFloat(document.getElementById('preco').value);
-      if (!nome || isNaN(preco)) return alert("Preencha o nome e o preço do prato!");
+      const nome = document.getElementById('nome').value.trim();
+      const desc = document.getElementById('desc').value.trim();
+      const imagem = document.getElementById('imagem').value.trim();
+      
+      const p = parseFloat(document.getElementById('precoP').value) || null;
+      const m = parseFloat(document.getElementById('precoM').value) || null;
+      const g = parseFloat(document.getElementById('precoG').value) || null;
+
+      if (!nome) return alert("Indique o nome do prato!");
+      if (!p && !m && !g) return alert("Indique o preço de pelo menos um tamanho!");
+
+      const tamanhos = {};
+      if (p) tamanhos["Pequeno"] = p;
+      if (m) tamanhos["Médio"] = m;
+      if (g) tamanhos["Grande"] = g;
 
       await fetch(`${FIREBASE_URL}cardapio.json`, {
         method: 'POST',
-        body: JSON.stringify({ nome, desc, preco })
+        body: JSON.stringify({ nome, desc, imagem, tamanhos })
       });
 
       document.getElementById('nome').value = '';
       document.getElementById('desc').value = '';
-      document.getElementById('preco').value = '';
+      document.getElementById('imagem').value = '';
+      document.getElementById('precoP').value = '';
+      document.getElementById('precoM').value = '';
+      document.getElementById('precoG').value = '';
       carregarDados();
     }
 
@@ -76,17 +101,25 @@
         if (dataMenu) {
           Object.keys(dataMenu).forEach(id => {
             const item = dataMenu[id];
+            let precosStr = '';
+            if (item.tamanhos) {
+              precosStr = Object.entries(item.tamanhos).map(([tam, val]) => `${tam}: R$ ${Number(val).toFixed(2)}`).join(' | ');
+            } else if (item.preco) {
+              precosStr = `R$ ${Number(item.preco).toFixed(2)}`;
+            }
+
             divMenu.innerHTML += `
               <div class="item-row">
                 <div>
-                  <strong>${item.nome}</strong> - R$ ${Number(item.preco).toFixed(2)}<br>
+                  <strong>${item.nome}</strong><br>
+                  <small style="color:#2b4c3f; font-weight:bold;">${precosStr}</small><br>
                   <small style="color:#666">${item.desc || ''}</small>
                 </div>
                 <button class="btn-del" onclick="removerRegistro('cardapio', '${id}')">Excluir</button>
               </div>`;
           });
         } else {
-          divMenu.innerHTML = '<p>Nenhum prato cadastrado ainda.</p>';
+          divMenu.innerHTML = '<p>Nenhum prato registado.</p>';
         }
 
         const resPed = await fetch(`${FIREBASE_URL}pedidos.json`);
@@ -108,7 +141,7 @@
               </div>`;
           });
         } else {
-          divPed.innerHTML = '<p>Nenhum pedido pendente no momento.</p>';
+          divPed.innerHTML = '<p>Nenhum pedido pendente.</p>';
         }
       } catch (e) {
         console.error("Erro ao carregar dados:", e);
