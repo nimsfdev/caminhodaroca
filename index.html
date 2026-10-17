@@ -3,38 +3,43 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Restaurante Caminho da Roça - Cardápio</title>
+  <title>Marmitex Caminho da Roça</title>
   <style>
     * { box-sizing: border-box; }
-    body { font-family: system-ui, -apple-system, sans-serif; background: #f8f9fa; margin: 0; padding-bottom: 110px; color: #333; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f8f9fa; margin: 0; padding-bottom: 120px; color: #333; }
     header { background: #2b4c3f; color: white; text-align: center; padding: 25px 15px; }
     header h1 { margin: 0 0 6px 0; font-size: 1.8rem; }
+    header p { margin: 0; opacity: 0.9; }
     .container { max-width: 600px; margin: 20px auto; padding: 0 15px; }
-    .card { background: white; padding: 15px; border-radius: 8px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 5px rgba(0,0,0,0.06); }
-    .card-corpo { display: flex; align-items: center; gap: 12px; flex: 1; }
-    .card-img { width: 75px; height: 75px; object-fit: cover; border-radius: 6px; }
-    .card-info h3 { margin: 0 0 4px 0; font-size: 1.1rem; }
-    .card-info p { margin: 0 0 6px 0; color: #666; font-size: 0.85rem; }
-    .select-tamanho { padding: 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.9rem; margin-top: 4px; }
-    .btn-add { background: #d97706; color: white; border: none; padding: 10px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-left: 10px; }
+    .card { background: white; padding: 18px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.06); }
+    .card h3 { margin: 0 0 5px 0; font-size: 1.2rem; }
+    .card p { margin: 0 0 12px 0; color: #666; font-size: 0.95rem; }
+    
+    /* Botões de escolha do tamanho */
+    .botoes-tamanho { display: flex; gap: 10px; }
+    .btn-tam { flex: 1; padding: 10px; border: 1px solid #d97706; background: #fff8f0; border-radius: 6px; cursor: pointer; text-align: center; font-weight: bold; color: #d97706; }
+    .btn-tam:hover { background: #d97706; color: white; }
+    .btn-tam span { display: block; font-size: 0.85rem; font-weight: normal; }
+
+    /* Barra inferior de checkout */
     .barra-carrinho { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px 20px; border-top: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 -2px 10px rgba(0,0,0,0.08); }
-    .btn-pedir { background: #2b4c3f; color: white; border: none; padding: 12px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1rem; }
+    .btn-pedir { background: #2b4c3f; color: white; border: none; padding: 12px 22px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1rem; }
   </style>
 </head>
 <body>
 
   <header>
-    <h1>🍲 Restaurante Caminho da Roça</h1>
-    <p>Comida caseira — Escolha o tamanho e monte o seu pedido!</p>
+    <h1>🍲 Marmitex Caminho da Roça</h1>
+    <p>Comida caseira no capricho — Escolha o tamanho!</p>
   </header>
 
   <main class="container" id="cardapioCliente">
-    <p style="text-align: center; color: #666;">A carregar cardápio...</p>
+    <p style="text-align: center; color: #666;">Carregando cardápio do dia...</p>
   </main>
 
   <footer class="barra-carrinho">
     <div>
-      <span id="qtdCarrinho">0 itens</span><br>
+      <span id="qtdCarrinho">0 marmitex</span><br>
       Total: <strong>R$ <span id="totalCarrinho">0.00</span></strong>
     </div>
     <button class="btn-pedir" onclick="enviarPedido()">Enviar Pedido</button>
@@ -42,7 +47,7 @@
 
   <script>
     const FIREBASE_URL = "https://restaurante-caminho-da-roca-default-rtdb.firebaseio.com/";
-    let catalogoItens = {};
+    let catalogo = {};
     let carrinho = [];
 
     async function carregarCardapio() {
@@ -52,78 +57,53 @@
         const div = document.getElementById("cardapioCliente");
 
         if (!dados) {
-          div.innerHTML = "<p style='text-align:center; color:#777;'>Nenhum prato disponível.</p>";
+          div.innerHTML = "<p style='text-align:center; color:#777;'>O cardápio de hoje está sendo preparado!</p>";
           return;
         }
 
-        catalogoItens = dados;
+        catalogo = dados;
         let html = "";
 
         for (const id in dados) {
-          const prato = dados[id];
-          const fotoHtml = prato.imagem ? `<img src="${prato.imagem}" class="card-img">` : '';
-          
-          let seletorHtml = '';
-          if (prato.tamanhos) {
-            seletorHtml = `<select id="tam_${id}" class="select-tamanho">`;
-            for (const t in prato.tamanhos) {
-              seletorHtml += `<option value="${t}">${t} - R$ ${Number(prato.tamanhos[t]).toFixed(2)}</option>`;
-            }
-            seletorHtml += `</select>`;
-          } else if (prato.preco) {
-            seletorHtml = `<span style="color:#2b4c3f; font-weight:bold;">R$ ${Number(prato.preco).toFixed(2)}</span>`;
-          }
-
+          const item = dados[id];
           html += `
             <div class="card">
-              <div class="card-corpo">
-                ${fotoHtml}
-                <div class="card-info">
-                  <h3>${prato.nome}</h3>
-                  <p>${prato.desc || ""}</p>
-                  ${seletorHtml}
-                </div>
+              <h3>${item.nome}</h3>
+              <p>${item.desc || ""}</p>
+              <div class="botoes-tamanho">
+                <button class="btn-tam" onclick="adicionar('${item.nome}', 'Média', ${item.precoM})">
+                  + Média
+                  <span>R$ ${Number(item.precoM).toFixed(2)}</span>
+                </button>
+                <button class="btn-tam" onclick="adicionar('${item.nome}', 'Grande', ${item.precoG})">
+                  + Grande
+                  <span>R$ ${Number(item.precoG).toFixed(2)}</span>
+                </button>
               </div>
-              <button class="btn-add" onclick="adicionarAoCarrinho('${id}')">+ Pedir</button>
             </div>
           `;
         }
         div.innerHTML = html;
       } catch (err) {
-        console.error("Erro ao carregar cardápio:", err);
+        console.error("Erro ao carregar pratos:", err);
       }
     }
 
-    function adicionarAoCarrinho(id) {
-      const prato = catalogoItens[id];
-      if (!prato) return;
-
-      let itemNome = prato.nome;
-      let precoFinal = 0;
-
-      if (prato.tamanhos) {
-        const select = document.getElementById(`tam_${id}`);
-        const tamanhoEscolhido = select.value;
-        precoFinal = Number(prato.tamanhos[tamanhoEscolhido]);
-        itemNome = `${prato.nome} (${tamanhoEscolhido})`;
-      } else {
-        precoFinal = Number(prato.preco);
-      }
-
-      carrinho.push({ nome: itemNome, preco: precoFinal });
-      document.getElementById("qtdCarrinho").innerText = `${carrinho.length} item(ns)`;
-      const total = carrinho.reduce((acc, i) => acc + i.preco, 0);
+    function adicionar(nome, tamanho, preco) {
+      carrinho.push({ nome: `${nome} (${tamanho})`, preco: Number(preco) });
+      document.getElementById("qtdCarrinho").innerText = `${carrinho.length} marmitex`;
+      const total = carrinho.reduce((acc, item) => acc + item.preco, 0);
       document.getElementById("totalCarrinho").innerText = total.toFixed(2);
     }
 
     async function enviarPedido() {
-      if (carrinho.length === 0) return alert("Selecione pelo menos um prato!");
+      if (carrinho.length === 0) return alert("Escolha pelo menos uma marmitex!");
 
-      const cliente = prompt("Indique o seu Nome e Mesa/Morada:");
+      const cliente = prompt("Digite seu Nome e Endereço de Entrega:");
       if (!cliente || !cliente.trim()) return;
 
-      const itensTexto = carrinho.map(i => `${i.nome} - R$ ${i.preco.toFixed(2)}`).join(" | ");
-      const total = carrinho.reduce((acc, i) => acc + i.preco, 0);
+      const resumo = carrinho.map(i => `${i.nome} [R$ ${i.preco.toFixed(2)}]`).join(" | ");
+      const total = carrinho.reduce((acc, item) => acc + item.preco, 0);
       const horario = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
       try {
@@ -131,18 +111,18 @@
           method: "POST",
           body: JSON.stringify({
             cliente: cliente.trim(),
-            itens: itensTexto,
+            itens: resumo,
             total: total,
             horario: horario
           })
         });
 
-        alert("✅ Pedido enviado com sucesso para a cozinha!");
+        alert("✅ Pedido recebido na cozinha! Preparando sua marmitex.");
         carrinho = [];
-        document.getElementById("qtdCarrinho").innerText = "0 itens";
+        document.getElementById("qtdCarrinho").innerText = "0 marmitex";
         document.getElementById("totalCarrinho").innerText = "0.00";
       } catch (err) {
-        alert("Erro ao enviar pedido.");
+        alert("Erro ao enviar pedido. Tente novamente.");
         console.error(err);
       }
     }
