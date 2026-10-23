@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel Admin - Restaurante Caminho da Roça</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f1f5f9; padding: 20px; max-width: 900px; margin: auto; color: #333; }
+    header { background: #2b4c3f; color: white; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; }
+    .box { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.06); }
+    input, button { padding: 12px; margin: 6px 0; width: 100%; border-radius: 6px; border: 1px solid #ccc; font-size: 1rem; }
+    button { background: #2b4c3f; color: white; font-weight: bold; border: none; cursor: pointer; }
+    button:hover { opacity: 0.9; }
+    .grade-precos { display: flex; gap: 10px; }
+    .btn-del { background: #e63946; width: auto; padding: 8px 14px; font-size: 0.9rem; }
+    .item-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding: 12px 0; }
+    .item-info { display: flex; align-items: center; gap: 12px; }
+    .thumb { width: 60px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid #ddd; }
+    .pedido-card { display: flex; justify-content: space-between; align-items: center; background: #fff8e6; padding: 15px; border-left: 5px solid #ffb703; margin-bottom: 10px; border-radius: 6px; }
+    .badge { display: inline-block; background: #e2e8f0; padding: 3px 8px; border-radius: 4px; font-size: 0.85rem; font-weight: bold; margin-top: 4px; }
+    .check-prato-dia { display: flex; align-items: center; gap: 8px; margin: 10px 0; font-weight: bold; color: #b45309; cursor: pointer; }
+    .check-prato-dia input { width: auto; margin: 0; transform: scale(1.2); }
+    .tabela-relatorio { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 0.9rem; }
+    .tabela-relatorio th, .tabela-relatorio td { border: 1px solid #e2e8f0; padding: 8px 10px; text-align: left; }
+    .tabela-relatorio th { background: #2b4c3f; color: white; }
+    .tabela-relatorio tr:nth-child(even) { background: #f8fafc; }
+    .resumo-relatorio { display: flex; justify-content: space-between; align-items: center; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px 15px; border-radius: 6px; margin-top: 12px; font-weight: bold; color: #166534; }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+
+  <header>
+    <h1>🍲 Restaurante Caminho da Roça - Painel</h1>
+    <p>Gerencie o cardápio e acompanhe os pedidos em tempo real</p>
+  </header>
+
+  <div class="box">
+    <h2>🔔 Pedidos na Fila (Ao Vivo)</h2>
+    <div id="listaPedidos">Carregando pedidos...</div>
+  </div>
+
+  <div class="box">
+    <h2>➕ Adicionar Item ao Cardápio</h2>
+    <input type="text" id="nome" placeholder="Nome do prato (ex: Frango com Quiabo)">
+    <input type="text" id="desc" placeholder="Descrição (ex: Acompanha arroz, angu e feijão tropeiro)">
+    
+    <div class="grade-precos">
+      <input type="number" id="precoM" step="0.01" placeholder="Preço Tamanho M (ex: 22.00)">
+      <input type="number" id="precoG" step="0.01" placeholder="Preço Tamanho G (ex: 28.00)">
+    </div>
+
+    <label class="check-prato-dia">
+      <input type="checkbox" id="pratoDoDia"> ⭐ Colocar em destaque como "Prato do Dia"
+    </label>
+
+    <label style="font-size: 0.9rem; font-weight: bold; display: block; margin-top: 8px;">📷 Foto do Prato (JPG/PNG do aparelho):</label>
+    <input type="file" id="fotoArquivo" accept="image/jpeg, image/png, image/webp">
+
+    <button onclick="adicionarPrato()">Salvar no Cardápio</button>
+  </div>
+
+  <!-- Nova Parte: Cadastro de Bebidas com Upload de Fotos -->
+  <div class="box">
+    <h2>🥤 Cadastrar Bebida</h2>
+    <input type="text" id="nomeBebida" placeholder="Nome da bebida (ex: Coca-Cola 2L, Suco de Laranja)">
+    <input type="text" id="descBebida" placeholder="Descrição (ex: Lata 350ml, Garrafa 600ml, Gelada)">
+    <input type="number" id="precoBebida" step="0.01" placeholder="Preço da Bebida (ex: 6.00)">
+
+    <label style="font-size: 0.9rem; font-weight: bold; display: block; margin-top: 8px;">📷 Foto da Bebida (JPG/PNG do aparelho):</label>
+    <input type="file" id="fotoBebida" accept="image/jpeg, image/png, image/webp">
+
+    <button onclick="adicionarBebida()">Salvar Bebida</button>
+  </div>
+
+  <div class="box">
+    <h2>📋 Cardápio Ativo no Site</h2>
+    <div id="listaCardapio">Carregando cardápio...</div>
+  </div>
+
+  <!-- Nova Parte: Relatórios com Filtro de Datas e Exportação Excel / PDF -->
+  <div class="box">
+    <h2>📊 Gerar Relatórios</h2>
+    <div class="grade-precos">
+      <div style="width: 100%;">
+        <label style="font-size: 0.9rem; font-weight: bold; display: block;">📅 Data Inicial:</label>
+        <input type="date" id="relDataInicio">
+      </div>
+      <div style="width: 100%;">
+        <label style="font-size: 0.9rem; font-weight: bold; display: block;">📅 Data Final:</label>
+        <input type="date" id="relDataFim">
+      </div>
+    </div>
+
+    <div class="grade-precos" style="margin-top: 6px;">
+      <button onclick="gerarRelatorioTela()">🔍 Filtrar Relatório</button>
+      <button onclick="exportarRelatorioExcel()" style="background: #15803d;">📗 Emitir Excel</button>
+      <button onclick="exportarRelatorioPDF()" style="background: #b91c1c;">📕 Emitir PDF</button>
+    </div>
+
+    <div id="resultadoRelatorio" style="margin-top: 10px;"></div>
+  </div>
+
+  <script>
+    const FIREBASE_URL = "https://restaurante-caminho-da-roca-default-rtdb.firebaseio.com/";
+
+    // Comprime e converte o arquivo JPG selecionado para salvar no banco
+    function processarImagem(file) {
+      return new Promise((resolve) => {
+        if (!file) return resolve("");
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const max = 320;
+            let w = img.width, h = img.height;
+            if (w > h && w > max) { h *= max / w; w = max; }
+            else if (h > max) { w *= max / h; h = max; }
+            canvas.width = w;
+            canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL('image/jpeg', 0.75));
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function adicionarPrato() {
+      const nome = document.getElementById('nome').value.trim();
+      const desc = document.getElementById('desc').value.trim();
+      const precoM = parseFloat(document.getElementById('precoM').value);
+      const precoG = parseFloat(document.getElementById('precoG').value);
+      const pratoDoDia = document.getElementById('pratoDoDia').checked;
+      const arquivo = document.getElementById('fotoArquivo').files[0];
+
+      if (!nome || (isNaN(precoM) && isNaN(precoG))) {
+        return alert("Preencha o nome e pelo menos um preço (M ou G)!");
+      }
+
+      const fotoBase64 = await processarImagem(arquivo);
+
+      await fetch(`${FIREBASE_URL}cardapio.json`, {
+        method: 'POST',
+        body: JSON.stringify({
+          categoria: pratoDoDia ? 'prato_do_dia' : 'prato',
+          pratoDoDia,
+          nome,
+          desc,
+          precoM,
+          precoG,
+          foto: fotoBase64
+        })
+      });
+
+      document.getElementById('nome').value = '';
+      document.getElementById('desc').value = '';
+      document.getElementById('precoM').value = '';
+      document.getElementById('precoG').value = '';
+      document.getElementById('pratoDoDia').checked = false;
+      document.getElementById('fotoArquivo').value = '';
+      carregarDados();
+    }
+
+    async function adicionarBebida() {
+      const nome = document.getElementById('nomeBebida').value.trim();
+      const desc = document.getElementById('descBebida').value.trim();
+      const preco = parseFloat(document.getElementById('precoBebida').value);
+      const arquivo = document.getElementById('fotoBebida').files[0];
+
+      if (!nome || isNaN(preco)) {
+        return alert("Preencha o nome e o preço da bebida!");
+      }
+
+      const fotoBase64 = await processarImagem(arquivo);
+
+      await fetch(`${FIREBASE_URL}cardapio.json`, {
+        method: 'POST',
+        body: JSON.stringify({
+          categoria: 'bebida',
+          nome,
+          desc,
+          preco,
+          foto: fotoBase64
+        })
+      });
+
+      document.getElementById('nomeBebida').value = '';
+      document.getElementById('descBebida').value = '';
+      document.getElementById('precoBebida').value = '';
+      document.getElementById('fotoBebida').value = '';
+      carregarDados();
+    }
+
+    let cachePedidosAtivos = {};
+
+    function obterDataHojeISO() {
+      const agora = new Date();
+      const ano = agora.getFullYear();
+      const mes = String(agora.getMonth() + 1).padStart(2, "0");
+      const dia = String(agora.getDate()).padStart(2, "0");
+      return `${ano}-${mes}-${dia}`;
+    }
+
+    function formatarDataBR(dataISO) {
+      if (!dataISO || !dataISO.includes("-")) return dataISO || "-";
+      const partes = dataISO.split("-");
+      return `${partes[2]}/${partes[1]}/${partes[0]}`;
+    }
+
+    async function removerRegistro(pasta, id) {
+      if (pasta === 'pedidos' && cachePedidosAtivos[id]) {
+        const pedido = cachePedidosAtivos[id];
+        if (!pedido.codigoPedido) {
+          await fetch(`${FIREBASE_URL}historico_pedidos.json`, {
+            method: 'POST',
+            body: JSON.stringify({
+              ...pedido,
+              codigoPedido: 'ped_fila_' + id,
+              data: pedido.data || obterDataHojeISO()
+            })
+          });
+        }
+      }
+      await fetch(`${FIREBASE_URL}${pasta}/${id}.json`, { method: 'DELETE' });
+      carregarDados();
+    }
+
+    async function carregarDados() {
+      try {
+        const resMenu = await fetch(`${FIREBASE_URL}cardapio.json`);
+        const dataMenu = await resMenu.json();
+        const divMenu = document.getElementById('listaCardapio');
+        divMenu.innerHTML = '';
+
+        if (dataMenu) {
+          Object.keys(dataMenu).forEach(id => {
+            const item = dataMenu[id];
+            const imgTag = item.foto ? `<img src="${item.foto}" class="thumb">` : '';
+            const valores = [
+              item.precoM ? `M: R$ ${Number(item.precoM).toFixed(2)}` : '',
+              item.precoG ? `G: R$ ${Number(item.precoG).toFixed(2)}` : '',
+              item.preco ? `R$ ${Number(item.preco).toFixed(2)}` : ''
+            ].filter(Boolean).join(' | ');
+
+            let tagTipo = '';
+            if (item.categoria === 'bebida') {
+              tagTipo = '<span class="badge" style="background:#dbeafe; color:#1e40af;">🥤 Bebida</span> ';
+            } else if (item.pratoDoDia || item.categoria === 'prato_do_dia') {
+              tagTipo = '<span class="badge" style="background:#fef3c7; color:#b45309;">⭐ Prato do Dia</span> ';
+            }
+
+            divMenu.innerHTML += `
+              <div class="item-row">
+                <div class="item-info">
+                  ${imgTag}
+                  <div>
+                    ${tagTipo}<strong>${item.nome}</strong> - <span style="color:#2b4c3f; font-weight:bold;">${valores}</span><br>
+                    <small style="color:#666">${item.desc || ''}</small>
+                  </div>
+                </div>
+                <button class="btn-del" onclick="removerRegistro('cardapio', '${id}')">Excluir</button>
+              </div>`;
+          });
+        } else {
+          divMenu.innerHTML = '<p>Nenhum item cadastrado ainda.</p>';
+        }
+
+        const resPed = await fetch(`${FIREBASE_URL}pedidos.json`);
+        const dataPed = await resPed.json();
+        cachePedidosAtivos = dataPed || {};
+        const divPed = document.getElementById('listaPedidos');
+        divPed.innerHTML = '';
+
+        if (dataPed) {
+          Object.keys(dataPed).forEach(id => {
+            const p = dataPed[id];
+            divPed.innerHTML += `
+              <div class="pedido-card">
+                <div>
+                  <strong>👤 Cliente: ${p.cliente}</strong> (${p.horario})<br>
+                  <span>🍽️ Pedido: ${p.itens}</span><br>
+                  ${p.obs ? `<span style="color:#b45309;">📝 <strong>Obs:</strong> ${p.obs}</span><br>` : ''}
+                  <strong>💰 Total: R$ ${Number(p.total).toFixed(2)}</strong><br>
+                  <span class="badge">💳 Pagamento: ${p.pagamento || 'A combinar'}</span>
+                </div>
+                <button class="btn-del" onclick="removerRegistro('pedidos', '${id}')">Concluir</button>
+              </div>`;
+          });
+        } else {
+          divPed.innerHTML = '<p>Nenhum pedido pendente no momento.</p>';
+        }
+      } catch (e) {
+        console.error("Erro ao carregar dados:", e);
+      }
+    }
+
+    async function obterPedidosFiltrados() {
+      const dataInicio = document.getElementById('relDataInicio').value;
+      const dataFim = document.getElementById('relDataFim').value;
+
+      const [resHist, resAtivos] = await Promise.all([
+        fetch(`${FIREBASE_URL}historico_pedidos.json`),
+        fetch(`${FIREBASE_URL}pedidos.json`)
+      ]);
+
+      const histData = (await resHist.json()) || {};
+      const ativosData = (await resAtivos.json()) || {};
+
+      const mapaPedidos = new Map();
+      const hoje = obterDataHojeISO();
+
+      Object.keys(histData).forEach(id => {
+        const p = histData[id];
+        if (!p) return;
+        const chave = p.codigoPedido || ('hist_' + id);
+        mapaPedidos.set(chave, {
+          data: p.data || hoje,
+          horario: p.horario || '-',
+          cliente: p.cliente || '-',
+          itens: p.itens || '-',
+          obs: p.obs || '',
+          pagamento: p.pagamento || 'A combinar',
+          total: Number(p.total) || 0
+        });
+      });
+
+      Object.keys(ativosData).forEach(id => {
+        const p = ativosData[id];
+        if (!p) return;
+        const chave = p.codigoPedido || ('ped_fila_' + id);
+        if (!mapaPedidos.has(chave)) {
+          mapaPedidos.set(chave, {
+            data: p.data || hoje,
+            horario: p.horario || '-',
+            cliente: p.cliente || '-',
+            itens: p.itens || '-',
+            obs: p.obs || '',
+            pagamento: p.pagamento || 'A combinar',
+            total: Number(p.total) || 0
+          });
+        }
+      });
+
+      let lista = Array.from(mapaPedidos.values());
+
+      if (dataInicio) {
+        lista = lista.filter(p => p.data >= dataInicio);
+      }
+      if (dataFim) {
+        lista = lista.filter(p => p.data <= dataFim);
+      }
+
+      lista.sort((a, b) => {
+        const cmpData = a.data.localeCompare(b.data);
+        if (cmpData !== 0) return cmpData;
+        return (a.horario || '').localeCompare(b.horario || '');
+      });
+
+      return lista;
+    }
+
+    async function gerarRelatorioTela() {
+      const divRes = document.getElementById('resultadoRelatorio');
+      divRes.innerHTML = '<p>Buscando dados do relatório...</p>';
+
+      try {
+        const lista = await obterPedidosFiltrados();
+        if (lista.length === 0) {
+          divRes.innerHTML = '<p>Nenhum pedido encontrado para o período selecionado.</p>';
+          return;
+        }
+
+        const valorTotalGeral = lista.reduce((acc, p) => acc + p.total, 0);
+
+        let linhasHtml = '';
+        lista.forEach(p => {
+          linhasHtml += `
+            <tr>
+              <td>${formatarDataBR(p.data)}</td>
+              <td>${p.horario}</td>
+              <td>${p.cliente}</td>
+              <td>${p.itens}${p.obs ? `<br><small style="color:#b45309;">Obs: ${p.obs}</small>` : ''}</td>
+              <td>${p.pagamento}</td>
+              <td><strong>R$ ${p.total.toFixed(2)}</strong></td>
+            </tr>
+          `;
+        });
+
+        divRes.innerHTML = `
+          <div class="resumo-relatorio">
+            <span>📦 Total de Pedidos: ${lista.length}</span>
+            <span>💰 Faturamento no Período: R$ ${valorTotalGeral.toFixed(2)}</span>
+          </div>
+          <div style="overflow-x: auto;">
+            <table class="tabela-relatorio">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Horário</th>
+                  <th>Cliente / Endereço</th>
+                  <th>Itens do Pedido</th>
+                  <th>Pagamento</th>
+                  <th>Valor Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${linhasHtml}
+              </tbody>
+            </table>
+          </div>
+        `;
+      } catch (e) {
+        console.error(e);
+        divRes.innerHTML = '<p style="color:#e63946;">Erro ao gerar relatório.</p>';
+      }
+    }
+
+    async function exportarRelatorioExcel() {
+      try {
+        const lista = await obterPedidosFiltrados();
+        if (lista.length === 0) {
+          return alert("Nenhum pedido encontrado no período selecionado para exportar!");
+        }
+
+        await gerarRelatorioTela();
+
+        const dataInicio = document.getElementById('relDataInicio').value || 'inicio';
+        const dataFim = document.getElementById('relDataFim').value || 'fim';
+        const valorTotalGeral = lista.reduce((acc, p) => acc + p.total, 0);
+
+        if (window.XLSX) {
+          const dadosPlanilha = lista.map(p => ({
+            "Data": formatarDataBR(p.data),
+            "Horário": p.horario,
+            "Cliente / Endereço": p.cliente,
+            "Itens do Pedido": p.itens,
+            "Observações": p.obs || "",
+            "Forma de Pagamento": p.pagamento,
+            "Total (R$)": Number(p.total.toFixed(2))
+          }));
+
+          dadosPlanilha.push({
+            "Data": "TOTAL GERAL",
+            "Horário": "",
+            "Cliente / Endereço": `${lista.length} pedido(s)`,
+            "Itens do Pedido": "",
+            "Observações": "",
+            "Forma de Pagamento": "",
+            "Total (R$)": Number(valorTotalGeral.toFixed(2))
+          });
+
+          const ws = XLSX.utils.json_to_sheet(dadosPlanilha);
+          ws['!cols'] = [
+            { wch: 12 },
+            { wch: 10 },
+            { wch: 35 },
+            { wch: 40 },
+            { wch: 25 },
+            { wch: 18 },
+            { wch: 14 }
+          ];
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, "Relatorio_Pedidos");
+          XLSX.writeFile(wb, `relatorio_pedidos_${dataInicio}_a_${dataFim}.xlsx`);
+        } else {
+          let tabelaExcel = `
+            <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">
+            <head><meta charset="UTF-8"></head>
+            <body>
+              <table border="1">
+                <thead>
+                  <tr style="background:#2b4c3f; color:white; font-weight:bold;">
+                    <th>Data</th>
+                    <th>Horário</th>
+                    <th>Cliente / Endereço</th>
+                    <th>Itens do Pedido</th>
+                    <th>Observações</th>
+                    <th>Pagamento</th>
+                    <th>Total (R$)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${lista.map(p => `
+                    <tr>
+                      <td>${formatarDataBR(p.data)}</td>
+                      <td>${p.horario}</td>
+                      <td>${p.cliente}</td>
+                      <td>${p.itens}</td>
+                      <td>${p.obs || ''}</td>
+                      <td>${p.pagamento}</td>
+                      <td>${p.total.toFixed(2).replace('.', ',')}</td>
+                    </tr>
+                  `).join('')}
+                  <tr style="font-weight:bold; background:#f0fdf4;">
+                    <td colspan="6">TOTAL GERAL (${lista.length} pedidos)</td>
+                    <td>${valorTotalGeral.toFixed(2).replace('.', ',')}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </body>
+            </html>
+          `;
+          const blob = new Blob(['\ufeff' + tabelaExcel], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = `relatorio_pedidos_${dataInicio}_a_${dataFim}.xls`;
+          link.click();
+        }
+      } catch (e) {
+        console.error(e);
+        alert("Erro ao exportar relatório para Excel.");
+      }
+    }
+
+    async function exportarRelatorioPDF() {
+      try {
+        const lista = await obterPedidosFiltrados();
+        if (lista.length === 0) {
+          return alert("Nenhum pedido encontrado no período selecionado para gerar PDF!");
+        }
+
+        await gerarRelatorioTela();
+
+        const dataInicio = document.getElementById('relDataInicio').value;
+        const dataFim = document.getElementById('relDataFim').value;
+        const periodoTexto = (dataInicio || dataFim)
+          ? `Período: ${dataInicio ? formatarDataBR(dataInicio) : 'Início'} até ${dataFim ? formatarDataBR(dataFim) : 'Hoje'}`
+          : 'Período: Todos os pedidos registrados';
+
+        const valorTotalGeral = lista.reduce((acc, p) => acc + p.total, 0);
+
+        if (window.jspdf && window.jspdf.jsPDF) {
+          const { jsPDF } = window.jspdf;
+          const doc = new jsPDF({ orientation: 'landscape' });
+
+          doc.setFontSize(16);
+          doc.setTextColor(43, 76, 63);
+          doc.text("Restaurante Caminho da Roça - Relatório de Pedidos", 14, 15);
+
+          doc.setFontSize(10);
+          doc.setTextColor(80, 80, 80);
+          doc.text(periodoTexto, 14, 22);
+          doc.text(`Total de Pedidos: ${lista.length}   |   Faturamento Total: R$ ${valorTotalGeral.toFixed(2)}`, 14, 28);
+
+          const colunas = ["Data", "Horário", "Cliente / Endereço", "Itens do Pedido", "Obs", "Pagamento", "Total (R$)"];
+          const linhas = lista.map(p => [
+            formatarDataBR(p.data),
+            p.horario,
+            p.cliente,
+            p.itens,
+            p.obs || "-",
+            p.pagamento,
+            `R$ ${p.total.toFixed(2)}`
+          ]);
+
+          linhas.push([
+            "TOTAL GERAL",
+            "",
+            `${lista.length} pedido(s)`,
+            "",
+            "",
+            "",
+            `R$ ${valorTotalGeral.toFixed(2)}`
+          ]);
+
+          doc.autoTable({
+            startY: 33,
+            head: [colunas],
+            body: linhas,
+            headStyles: { fillColor: [43, 76, 63] },
+            styles: { fontSize: 9 }
+          });
+
+          const nomeArq = `relatorio_pedidos_${dataInicio || 'inicio'}_a_${dataFim || 'fim'}.pdf`;
+          doc.save(nomeArq);
+        } else {
+          const janela = window.open('', '_blank');
+          janela.document.write(`
+            <html>
+            <head>
+              <title>Relatório de Pedidos - Restaurante Caminho da Roça</title>
+              <style>
+                body { font-family: sans-serif; padding: 20px; color: #333; }
+                h2 { color: #2b4c3f; margin-bottom: 5px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 12px; }
+                th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+                th { background: #2b4c3f; color: white; }
+              </style>
+            </head>
+            <body>
+              <h2>Restaurante Caminho da Roça - Relatório de Pedidos</h2>
+              <p><strong>${periodoTexto}</strong></p>
+              <p><strong>Total de Pedidos:</strong> ${lista.length} | <strong>Faturamento Total:</strong> R$ ${valorTotalGeral.toFixed(2)}</p>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Horário</th>
+                    <th>Cliente / Endereço</th>
+                    <th>Itens</th>
+                    <th>Pagamento</th>
+                    <th>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${lista.map(p => `
+                    <tr>
+                      <td>${formatarDataBR(p.data)}</td>
+                      <td>${p.horario}</td>
+                      <td>${p.cliente}</td>
+                      <td>${p.itens}${p.obs ? `<br><small>Obs: ${p.obs}</small>` : ''}</td>
+                      <td>${p.pagamento}</td>
+                      <td>R$ ${p.total.toFixed(2)}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </body>
+            </html>
+          `);
+          janela.document.close();
+          janela.focus();
+          janela.print();
+        }
+      } catch (e) {
+        console.error(e);
+        alert("Erro ao exportar relatório em PDF.");
+      }
+    }
+
+    const hojeInicial = obterDataHojeISO();
+    document.getElementById('relDataInicio').value = hojeInicial;
+    document.getElementById('relDataFim').value = hojeInicial;
+
+    carregarDados();
+    setInterval(carregarDados, 3000);
+  </script>
+</body>
+</html>
